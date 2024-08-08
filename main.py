@@ -5,6 +5,7 @@ from requests_html import HTMLSession
 from bs4 import BeautifulSoup
 from selenium import webdriver 
 from selenium.webdriver.common.by import By
+import undetected_chromedriver as uc
 
 # 1. data setup
 user_agents = [
@@ -21,7 +22,7 @@ user_agents = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0"
 ]
-url = "https://www.realtor.ca/map#ZoomLevel=10&Center=43.708087%2C-79.376385&LatitudeMax=43.99775&LongitudeMax=-78.75222&LatitudeMin=43.41702&LongitudeMin=-80.00055&CurrentPage=1&Sort=6-D&PGeoIds=g30_dpz89rm7&GeoName=Toronto%2C%20ON&PropertyTypeGroupID=1&TransactionTypeId=3&PropertySearchTypeId=0&Currency=CAD&HiddenListingIds=&IncludeHiddenListings=false"
+url = "https://www.realtor.ca/map#ZoomLevel=10&Center=43.708087%2C-79.376385&LatitudeMax=43.99775&LongitudeMax=-78.75222&LatitudeMin=43.41702&LongitudeMin=-80.00055&CurrentPage=45&Sort=6-D&PGeoIds=g30_dpz89rm7&GeoName=Toronto%2C%20ON&PropertyTypeGroupID=1&TransactionTypeId=3&PropertySearchTypeId=0&Currency=CAD&HiddenListingIds=&IncludeHiddenListings=false"
 headers = {
     "referer": "https://prerender.io/",
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -44,7 +45,7 @@ headers = {
 
 # Create Chromeoptions instance 
 options = webdriver.ChromeOptions() 
- 
+
 # Adding argument to disable the AutomationControlled flag 
 options.add_argument("--disable-blink-features=AutomationControlled") 
  
@@ -60,7 +61,7 @@ i = 1
 try:
     url = "https://www.realtor.ca/map#ZoomLevel=10&Center=43.708087%2C-79.376385&LatitudeMax=43.99775&LongitudeMax=-78.75222&LatitudeMin=43.41702&LongitudeMin=-80.00055&Sort=6-D&PGeoIds=g30_dpz89rm7&GeoName=Toronto%2C%20ON&PropertyTypeGroupID=1&TransactionTypeId=3&PropertySearchTypeId=0&Currency=CAD&HiddenListingIds=&IncludeHiddenListings=false"
     driver.get(url=url)
-    time.sleep(30)
+    time.sleep(20)
     i+=1
 finally:
     while True: 
@@ -79,11 +80,20 @@ finally:
                 "address": item.find('div', attrs={"class": "smallListingCardAddress"}).text,
                 "info": additional_info
             }
-            print(rental, end="\n\n")
+            print(rental["price"], rental["address"], rental["info"])
+            all_rentals.append(rental)
         next_page_button = driver.find_element(By.XPATH, '//*[@id="SideBarPagination"]/div/a[3]')
-        if next_page_button.get_property('disabled'): 
+        if next_page_button and next_page_button.get_attribute('disabled') == 'true': 
             driver.quit(); 
             break
         else: next_page_button.click(); time.sleep(3)
 
-
+all_rentals.sort(key=lambda x: x['price'])
+with open("result.txt", "w") as text_file:
+    for rental in all_rentals:
+        text_file.write("""
+price: {0},
+address: {1},
+info: {2}
+\n
+        """.format(rental["price"], rental["address"], "{" + "\n".join(rental["info"]) + "\n}"))
